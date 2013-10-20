@@ -11,7 +11,8 @@
 #include <iostream>
 
 #define THEIRPORT 5000
-#define OTHER "10.3.131.150"
+//#define OTHER "10.3.131.150"
+#define OTHER "127.0.0.1"
 using namespace std;
  
 int main(void)

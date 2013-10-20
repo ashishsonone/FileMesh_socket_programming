@@ -12,13 +12,12 @@
 
 #include <iostream>
 
-#define MYPORT 5000
+#define THEIRPORT 5000
 //#define MYADDR "10.3.131.150"
-#define MYADDR "127.0.0.1"
+#define OTHER "127.0.0.1"
 using namespace std;
 
 int myfd;
-bool cansend;
 struct sockaddr_in my_addr;
 struct sockaddr_in their_addr;
 unsigned int addr_len; // NOTE unsigned int
@@ -37,24 +36,21 @@ void *listen(void *)
 
           //printf("\t\tgot packet from %s\n", inet_ntoa(their_addr.sin_addr));
           //printf("\t\tpacket is  %d bytes\n", n);
-          cout << "\nHim:>" ;
+          cout << "\nHim>" ;
           if(fputs(recvBuff, stdout) == EOF){
               printf("\n\t\t Error : Fputs error");
           }
-          cout << "\nYou:>" ;
         }
         else{
             cout << "\t\treceive error\n";
         }
-        cansend = true;
+          cout << "\nYou>" ;
     }
     pthread_exit(NULL);
 }
  
- 
 int main(void)
 {
-  cansend = false;
   myfd = 0;
   
   addr_len = sizeof(struct sockaddr);
@@ -70,29 +66,25 @@ int main(void)
   
   memset(sendBuff, '0', sizeof(sendBuff));
       
-  my_addr.sin_family = AF_INET;
-  my_addr.sin_addr.s_addr = inet_addr(MYADDR);
-  my_addr.sin_port = htons(MYPORT);
-  memset(&(my_addr.sin_zero), '\0', 8); //set rem to nulls
- 
-  bind(myfd, (struct sockaddr*)&my_addr, sizeof(my_addr));
+  //BUT their addr must be filled
+  their_addr.sin_family = AF_INET;
+  their_addr.sin_addr.s_addr = inet_addr(OTHER);
+  their_addr.sin_port = htons(THEIRPORT);
+  memset(&(their_addr.sin_zero), '\0', 8); //set rem to nulls
   
+
     pthread_t listenthread;
     int rc = pthread_create(&listenthread, NULL, 
                           listen, NULL);
     
-    cout << cansend << endl;
-    while(!cansend){
-        cout << "\t\twaiting...\n";
-        usleep(500000);
-    }
-    cout << "\n\t\t...Congratulations ...connected ...\n\t\t write msgs and press RETURN to send ... \n";
       int n;
 
+    cout << "\n\t\twrite msgs and press RETURN to send ... \n";
     while(true){
         //NOTE THE USE OF RECVFROM
         //now listener sends and talker listens
         //strcpy(sendBuff, "My First words !!");
+        usleep(50000);
         cout<<"\nYou>";
         gets(sendBuff);
         n = sendto(myfd, sendBuff, sizeof(sendBuff)-1, 0,
