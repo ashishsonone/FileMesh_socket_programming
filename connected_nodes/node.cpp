@@ -18,6 +18,59 @@
 #define MTU 1500
 
 using namespace std;
+void handle(udp_header client){
+    int temp_fd; //a temporary socket for handling this particular file transfer connection
+    
+    struct sockaddr_in client_addr;
+    client_addr.sin_family = AF_INET;
+    client_addr.sin_addr.s_addr = client.src_ip;
+    client_addr.sin_port = client.src_port;
+    memset(&(client_addr.sin_zero), '\0', 8); //set rem to nulls
+    print_addr(client_addr);
+
+    char sendBuff[MTU], recvBuff[MTU];  
+    memset(sendBuff, '0', sizeof(sendBuff));
+    memset(recvBuff, '0', sizeof(recvBuff));
+    //socket()
+    if((temp_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1){
+      perror("socket");
+      exit(1);
+    }
+
+    printf("\t\ttemporary socket retrieve success\n");
+    //connect()
+    if(connect(temp_fd, (struct sockaddr *)&client_addr, sizeof(client_addr))<0)
+    {
+      printf("\n Error : Connect Failed \n");
+      return ;
+    }
+    int filesize, toreceive; //toreceive keeps track of how much else is 
+                             //there to receive before connectin can be closed
+    //get first chunk = 1500
+    int n = recv(temp_fd, recvBuff, sizeof(recvBuff)-1, 0);
+    if(n<0){
+        cout << "error receiving file" << endl;
+        return;
+    }
+    cout << "received bytes" << n <<endl;
+    //get file size
+    memcpy(&filesize, recvBuff, sizeof(int));
+    filesize=ntohl(filesize);
+    cout << "filesize is " << filesize <<endl;
+    
+    FILE  *wf;
+    wf = fopen("write.txt", "wb");
+    fwrite(recvBuff+4, 1, n-4, wf);
+
+    toreceive = filesize + 4 - n;
+    //get the rest of file
+    while(toreceive > 0){
+        n = recv(temp_fd, recvBuff, sizeof(recvBuff)-1, 0);
+        fwrite(recvBuff, 1, n, wf);
+        toreceive -= n;
+    }
+    close(temp_fd);
+}
 
 int main(int argc, char *argv[]) //argv is the node index
 {
@@ -52,40 +105,38 @@ int main(int argc, char *argv[]) //argv is the node index
   
     
 
-    //receive
-    int n = recvfrom(my_fd, recvBuff, sizeof(recvBuff)-1, 0,
-                    (struct sockaddr*)&their_addr, &addr_len);
-    struct udp_header head; //receive udp request info
-    if(n>0){
-        recvBuff[n] = 0;
-        cout << "received bytes : " << n <<endl;
-        //memcpy(void *dest, void* src, size_t numbytes);
-        cout << "size of head bytes : " << sizeof(struct udp_header) <<endl;
-        memcpy(&head, recvBuff, sizeof(head));
-        cout << "decoding struct head... port " << ntohs(head.src_port) <<" code "<<ntohs(head.req_code)<<endl;
-    }
-    else{
-        cout << "\t\treceive error\n";
-    }
+    //while(true){
+        //receive
+        int n = recvfrom(my_fd, recvBuff, sizeof(recvBuff)-1, 0,
+                        (struct sockaddr*)&their_addr, &addr_len);
+        struct udp_header head; //receive udp request info
+        if(n>0){
+            recvBuff[n] = 0;
+            cout << "received bytes : " << n <<endl;
+            //memcpy(void *dest, void* src, size_t numbytes);
+            cout << "size of head bytes : " << sizeof(struct udp_header) <<endl;
+            memcpy(&head, recvBuff, sizeof(head));
+            cout << "decoding struct head... port " << ntohs(head.src_port) <<" code "<<ntohs(head.req_code)<<endl;
+        }
+        else{
+            cout << "\t\treceive error\n";
+        }
 
-    int req_code = ntohs(head.req_code);
-    //decide based on code whether to forward it to correct server or serve it
-    if(req_code==index){//serve the source (whose details in head)
-        cout << "serving the source";
-        their_addr.sin_addr.s_addr = head.src_ip;
-        their_addr.sin_port = head.src_port;
-        char send[] = "lemme serve you. I am THE node"; 
-        strcpy(sendBuff, send);
-        n = sendto(my_fd, sendBuff, strlen(sendBuff), 0,
-                        (struct sockaddr*)&their_addr, addr_len);
-    }
-    else{//forward what was received to appropriate node
-        cout << "forwarding to correct node" << req_code ;
-        their_addr = CM[req_code];
-        memcpy(sendBuff, &head, sizeof(head));
-        n = sendto(my_fd, sendBuff, sizeof(struct udp_header), 0,
-                        (struct sockaddr*)&their_addr, addr_len);
-    }
+        int req_code = ntohs(head.req_code);
+        bool i = (req_code==index);
+        cout << "checking req_code " << req_code << i <<endl;
+        //decide based on code whether to forward it to correct server or serve it
+        if(req_code==index){//serve the source (whose details in head)
+            handle(head);
+        }
+        else{//forward what was received to appropriate node
+            cout << "forwarding to correct node" << req_code ;
+            their_addr = CM[req_code];
+            memcpy(sendBuff, &head, sizeof(head));
+            n = sendto(my_fd, sendBuff, sizeof(struct udp_header), 0,
+                            (struct sockaddr*)&their_addr, addr_len);
+        }
+   // }
     close(my_fd);
     return 0;
 }
