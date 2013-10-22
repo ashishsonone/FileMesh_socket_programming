@@ -1,0 +1,8 @@
+hello
+all 
+this
+is
+a
+binary file
+transfer
+
