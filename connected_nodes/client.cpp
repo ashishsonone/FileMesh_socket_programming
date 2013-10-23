@@ -82,11 +82,11 @@ int main(int argc, char *argv[]) //argv is the node index
     //bind() tcpfd to my_addr that will be used to exchange files
     bind(tcp_fd, (struct sockaddr*)&my_addr, sizeof(my_addr));
 
-    //wait for tcp connection from server and then upload the file
+    /*//wait for tcp connection from server and then upload the file
     if(listen(tcp_fd, 5) == -1){
         printf("Failed to listen\n");
         return -1;
-    }
+    }*/
 
     //while(true){
         unsigned short int code, nodeid;
@@ -113,6 +113,12 @@ int main(int argc, char *argv[]) //argv is the node index
             cout << "\t\ttransmit error\n";
         }
         
+        if(listen(tcp_fd, 5) == -1){
+            printf("Failed to listen\n");
+            return -1;
+        }
+
+        cout <<"waiting for connection" <<endl;
         //wait for reply from correct server
         int temp_fd = accept(tcp_fd, (struct sockaddr*)NULL ,NULL); // accept awaiting request
         cout << "temp fd" << temp_fd <<endl;

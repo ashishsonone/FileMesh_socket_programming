@@ -80,6 +80,7 @@ void handle(udp_header client){
         fwrite(recvBuff, 1, n, wf);
         toreceive -= n;
     }
+    cout <<"file received ...now closing the socket" <<endl;
     close(temp_fd);
 }
 
@@ -116,8 +117,9 @@ int main(int argc, char *argv[]) //argv is the node index
   
     
 
-    //while(true){
+    while(true){
         //receive
+        cout <<"waiting for udp receive" <<endl;
         int n = recvfrom(my_fd, recvBuff, sizeof(recvBuff)-1, 0,
                         (struct sockaddr*)&their_addr, &addr_len);
         struct udp_header head; //receive udp request info
@@ -147,7 +149,7 @@ int main(int argc, char *argv[]) //argv is the node index
             n = sendto(my_fd, sendBuff, sizeof(struct udp_header), 0,
                             (struct sockaddr*)&their_addr, addr_len);
         }
-   // }
+    }
     close(my_fd);
     return 0;
 }
