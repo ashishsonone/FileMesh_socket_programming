@@ -44,6 +44,7 @@ void send(int server_fd){
         fread(sendBuff, 1, len, rf);
         send(server_fd, sendBuff, len, 0);
     }
+    close(server_fd);
 }
 
 int main(int argc, char *argv[]) //argv is the node index
@@ -79,8 +80,15 @@ int main(int argc, char *argv[]) //argv is the node index
     }
     printf("\t\tsockets retrieve success\n");
  
+    ///set SO_REUSEADDR socket option on tcp_fd(so to reuse the port and bind doesnot give error)
+    int optval = 1;
+    setsockopt(tcp_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
+    
     //bind() tcpfd to my_addr that will be used to exchange files
-    bind(tcp_fd, (struct sockaddr*)&my_addr, sizeof(my_addr));
+    if(bind(tcp_fd, (struct sockaddr*)&my_addr, sizeof(my_addr))<0){
+        cout << "bind error"<<endl;
+        exit(2);
+    }
 
     /*//wait for tcp connection from server and then upload the file
     if(listen(tcp_fd, 5) == -1){
@@ -127,5 +135,6 @@ int main(int argc, char *argv[]) //argv is the node index
         
     //}
     close(my_fd);    
+    close(tcp_fd);    
     return 0;
 }
