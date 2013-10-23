@@ -44,6 +44,7 @@ int hash(string fpath){
     while(fgets(buff, sizeof(buff), in)!=NULL){
         cout << buff << " with len " <<strlen(buff) <<endl;
     }
+
     pclose(in);
     return 0;
 }
@@ -59,7 +60,16 @@ int main(){
     cout << getenv("PATH");
     udp_header x;
     mapsetup();
-    hash("node.c");
+    hash("node.cpp");
+
+    cout << "--------checking md5_hash() and findmodulo() functions\n";
+    char *hashed = md5_hash("node.cpp");
+    cout << "md5_hash is : " << hashed <<endl;
+    unsigned int mod = findmodulo(hashed, 13);
+    cout << "hash mod n is : " << mod <<endl;
+    cout << "--------END OF checking md5_hash() and findmodulo() functions\n";
+
+
     map<int, struct sockaddr_in> CM;
     CM = cluster_setup();
     cout <<"\n" << ntohs(CM[0].sin_port) << " "<< ntohs(CM[1].sin_port) <<endl;
