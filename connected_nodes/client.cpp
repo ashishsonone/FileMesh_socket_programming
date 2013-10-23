@@ -20,13 +20,12 @@
 #define MYPORT 6000
 
 using namespace std;
-void send(int server_fd){
+void send(int server_fd, char *fpath){
     FILE *rf, *wf;
-    char rname[20] = "input.txt";
     char sendBuff[MTU];
     int fsize;
 
-    rf = fopen(rname, "rb");
+    rf = fopen(fpath, "rb");
     fseek(rf, 0, SEEK_END); //fseek(fp, offset, origin) -- go to that pos
     fsize = ftell(rf); //ftell(fp) -- tell the current pos
     fseek(rf, 0 , SEEK_SET);//go to begining of file
@@ -45,6 +44,7 @@ void send(int server_fd){
         send(server_fd, sendBuff, len, 0);
     }
     close(server_fd);
+    fclose(rf); //close file object (VERY IMP)
 }
 
 int main(int argc, char *argv[]) //argv is the node index
@@ -98,8 +98,12 @@ int main(int argc, char *argv[]) //argv is the node index
 
     //while(true){
         unsigned short int code, nodeid;
+        char fpath[50];char *md5sum;
         cout << "Enter node id:"; cin>>nodeid;
         cout << "Enter code:"; cin>>code;
+        cout << "Enter file path:"; cin>>fpath;
+        md5sum = md5_hash(fpath);
+        cout << "md5 hash is : "<<md5sum<<endl; 
         //sendto()
         map<int, struct sockaddr_in> CM; //cluster map containing nodeindex->sockaddr_in mapping
         CM = cluster_setup(); //use only now just to send to servers easily
@@ -111,7 +115,9 @@ int main(int argc, char *argv[]) //argv is the node index
         head.req_code = htons(code);
         head.src_port = my_addr.sin_port;
         head.src_ip = my_addr.sin_addr.s_addr;
-        memcpy(sendBuff, &head, sizeof(head));
+        memcpy(head.md5sum, md5sum, 32); //copy md5sum to head.md5sum
+
+        memcpy(sendBuff, &head, sizeof(head)); //fill the sendBuff
         int n = sendto(my_fd, sendBuff, sizeof(struct udp_header), 0,
                         (struct sockaddr*)&their_addr, addr_len);
         if(n>0){
@@ -131,7 +137,7 @@ int main(int argc, char *argv[]) //argv is the node index
         int temp_fd = accept(tcp_fd, (struct sockaddr*)NULL ,NULL); // accept awaiting request
         cout << "temp fd" << temp_fd <<endl;
 
-        send(temp_fd);
+        send(temp_fd, fpath);
         
     //}
     close(my_fd);    

@@ -15,6 +15,7 @@ struct udp_header{
     unsigned short int req_code; // request code-> 0 : store;  1 : retrieve
     unsigned short int src_port; //port Network byte order
     unsigned int src_ip; //32-bit ip address source(client) Network byte order
+    char md5sum[32];
 };
 
 map<int, struct sockaddr_in> cluster_setup(){

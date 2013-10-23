@@ -20,7 +20,7 @@
 using namespace std;
 unsigned short int nodeindex ; //this is the node # (global variable)
 
-void handle(udp_header client){
+void handle(udp_header client, char *md5sum){
     int temp_fd; //a temporary socket for handling this particular file transfer connection
     
     struct sockaddr_in client_addr;
@@ -66,7 +66,7 @@ void handle(udp_header client){
     system(c_cmd);
 
     char c_path[100];
-    sprintf(c_path, "HARDDISK/node%d/write.txt", nodeindex);
+    sprintf(c_path, "HARDDISK/node%d/%s", nodeindex, md5sum);
     /**********************/
     FILE  *wf;
     wf = fopen(c_path, "wb");
@@ -82,6 +82,7 @@ void handle(udp_header client){
     }
     cout <<"file received ...now closing the socket" <<endl;
     close(temp_fd);
+    fclose(wf);  //close file object (VERY IMP)
 }
 
 int main(int argc, char *argv[]) //argv is the node index
@@ -123,13 +124,17 @@ int main(int argc, char *argv[]) //argv is the node index
         int n = recvfrom(my_fd, recvBuff, sizeof(recvBuff)-1, 0,
                         (struct sockaddr*)&their_addr, &addr_len);
         struct udp_header head; //receive udp request info
+        char md5sum[33];
         if(n>0){
             recvBuff[n] = 0;
             cout << "received bytes : " << n <<endl;
             //memcpy(void *dest, void* src, size_t numbytes);
             cout << "size of head bytes : " << sizeof(struct udp_header) <<endl;
-            memcpy(&head, recvBuff, sizeof(head));
+            memcpy(&head, recvBuff, sizeof(struct udp_header));
             cout << "decoding struct head... port " << ntohs(head.src_port) <<" code "<<ntohs(head.req_code)<<endl;
+            memcpy(md5sum, head.md5sum, 32);
+            md5sum[32] = 0;
+            cout <<"md5sum received is " << md5sum <<endl;
         }
         else{
             cout << "\t\treceive error\n";
@@ -140,7 +145,7 @@ int main(int argc, char *argv[]) //argv is the node index
         cout << "checking req_code " << req_code << i <<endl;
         //decide based on code whether to forward it to correct server or serve it
         if(req_code==nodeindex){//serve the source (whose details in head)
-            handle(head);
+            handle(head, md5sum);
         }
         else{//forward what was received to appropriate node
             cout << "forwarding to correct node" << req_code ;
