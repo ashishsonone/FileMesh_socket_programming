@@ -18,6 +18,8 @@
 #define MTU 1500
 
 using namespace std;
+unsigned short int nodeindex ; //this is the node # (global variable)
+
 void handle(udp_header client){
     int temp_fd; //a temporary socket for handling this particular file transfer connection
     
@@ -57,15 +59,24 @@ void handle(udp_header client){
     memcpy(&filesize, recvBuff, sizeof(int));
     filesize=ntohl(filesize);
     cout << "filesize is " << filesize <<endl;
-    
+    /* file location info */   
+    //first create the save loc folder if not exists
+    char c_cmd[100]; 
+    sprintf(c_cmd, "mkdir -p HARDDISK/node%d", nodeindex);
+    system(c_cmd);
+
+    char c_path[100];
+    sprintf(c_path, "HARDDISK/node%d/write.txt", nodeindex);
+    /**********************/
     FILE  *wf;
-    wf = fopen("write.txt", "wb");
+    wf = fopen(c_path, "wb");
     fwrite(recvBuff+4, 1, n-4, wf);
 
     toreceive = filesize + 4 - n;
     //get the rest of file
     while(toreceive > 0){
         n = recv(temp_fd, recvBuff, sizeof(recvBuff)-1, 0);
+        cout << "received bytes" << n <<endl;
         fwrite(recvBuff, 1, n, wf);
         toreceive -= n;
     }
@@ -82,8 +93,8 @@ int main(int argc, char *argv[]) //argv is the node index
     map<int, struct sockaddr_in> CM; //cluster map containing nodeindex->sockaddr_in mapping
     CM = cluster_setup();
 
-    unsigned short int index = atoi(argv[1]); //this is the index used to get own sockaddr_in from CM
-    my_addr = CM[index];
+    nodeindex = atoi(argv[1]); //this is the index used to get own sockaddr_in from CM
+    my_addr = CM[nodeindex];
     print_addr(my_addr);
 
 
@@ -123,10 +134,10 @@ int main(int argc, char *argv[]) //argv is the node index
         }
 
         int req_code = ntohs(head.req_code);
-        bool i = (req_code==index);
+        bool i = (req_code==nodeindex);
         cout << "checking req_code " << req_code << i <<endl;
         //decide based on code whether to forward it to correct server or serve it
-        if(req_code==index){//serve the source (whose details in head)
+        if(req_code==nodeindex){//serve the source (whose details in head)
             handle(head);
         }
         else{//forward what was received to appropriate node

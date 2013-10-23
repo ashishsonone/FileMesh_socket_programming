@@ -17,7 +17,7 @@ struct udp_header{
 
 map<int, struct sockaddr_in> cluster_setup(){
     map<int, struct sockaddr_in> M;
-    for(int i=0; i<3; i++){
+    for(int i=0; i<6; i++){
         struct sockaddr_in my_addr;
         my_addr.sin_family = AF_INET;
         my_addr.sin_addr.s_addr = inet_addr(ADDR);

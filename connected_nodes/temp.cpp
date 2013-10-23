@@ -49,6 +49,14 @@ int hash(string fpath){
 }
 
 int main(){
+    //testing sprintf
+    char c_cmd[100]; 
+    int index = 3;
+    sprintf(c_cmd, "mkdir -p HARDDISK/node%d", index);
+    system(c_cmd);
+
+    //testing env
+    cout << getenv("PATH");
     udp_header x;
     mapsetup();
     hash("node.c");
