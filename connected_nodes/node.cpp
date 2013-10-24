@@ -16,6 +16,7 @@
 #include "header.h"
 
 #define MTU 1500
+#define MESHSIZE 6
 
 using namespace std;
 unsigned short int nodeindex ; //this is the node # (global variable)
@@ -141,15 +142,16 @@ int main(int argc, char *argv[]) //argv is the node index
         }
 
         int req_code = ntohs(head.req_code);
-        bool i = (req_code==nodeindex);
-        cout << "checking req_code " << req_code << i <<endl;
+        int targetnode = findmodulo(md5sum, MESHSIZE); //this is the index of correct node acc to (hash)%(numnodes)
+        bool i = (targetnode==nodeindex);
+        cout << "checking target node" << targetnode <<endl;
         //decide based on code whether to forward it to correct server or serve it
-        if(req_code==nodeindex){//serve the source (whose details in head)
+        if(i){//serve the source (whose details in head)
             handle(head, md5sum);
         }
         else{//forward what was received to appropriate node
             cout << "forwarding to correct node" << req_code ;
-            their_addr = CM[req_code];
+            their_addr = CM[targetnode];
             memcpy(sendBuff, &head, sizeof(head));
             n = sendto(my_fd, sendBuff, sizeof(struct udp_header), 0,
                             (struct sockaddr*)&their_addr, addr_len);
