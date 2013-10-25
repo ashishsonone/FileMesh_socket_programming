@@ -74,6 +74,11 @@ map<int, struct sockaddr_in> mesh_configure(int nodeindex, int *numnodes, char* 
     return M;
 }
 
+map<int, struct sockaddr_in> mesh_configure_client(){//return mesh-map for client
+    int numnodes; char folderloc[100]; //just dummy variables to call mesh_configure()
+    return mesh_configure(0, &numnodes, folderloc);
+}
+
 void print_addr(sockaddr_in addr){ //just to print sockaddr_in struct
     cout << "addr " << inet_ntoa(addr.sin_addr) <<":" << ntohs(addr.sin_port)<< endl;
 }
