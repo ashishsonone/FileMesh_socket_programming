@@ -16,10 +16,11 @@
 #include "header.h"
 
 #define MTU 1500
-#define MESHSIZE 6
 
 using namespace std;
 unsigned short int nodeindex ; //this is the node # (global variable)
+char folderloc[100]; //this is the folder where this node will store files
+int numnodes;
 
 void handle(udp_header client, char *md5sum){
     int temp_fd; //a temporary socket for handling this particular file transfer connection
@@ -63,11 +64,11 @@ void handle(udp_header client, char *md5sum){
     /* file location info */   
     //first create the save loc folder if not exists
     char c_cmd[100]; 
-    sprintf(c_cmd, "mkdir -p HARDDISK/node%d", nodeindex);
+    sprintf(c_cmd, "mkdir -p %s", folderloc);
     system(c_cmd);
 
     char c_path[100];
-    sprintf(c_path, "HARDDISK/node%d/%s", nodeindex, md5sum);
+    sprintf(c_path, "%s/%s", folderloc, md5sum);
     /**********************/
     FILE  *wf;
     wf = fopen(c_path, "wb");
@@ -93,13 +94,15 @@ int main(int argc, char *argv[]) //argv is the node index
     struct sockaddr_in my_addr, their_addr;
     unsigned int addr_len; // NOTE unsigned int
 
-    map<int, struct sockaddr_in> CM; //cluster map containing nodeindex->sockaddr_in mapping
-    CM = cluster_setup();
+    nodeindex = atoi(argv[1]); //this is the index which identifies this node
 
-    nodeindex = atoi(argv[1]); //this is the index used to get own sockaddr_in from CM
-    my_addr = CM[nodeindex];
+    map<int, struct sockaddr_in> Mesh; //cluster map containing nodeindex->sockaddr_in mapping
+    Mesh = mesh_configure(nodeindex, &numnodes, folderloc);
+    cout << "folder loc is " << folderloc << endl;
+    cout << "no of nodes is " << numnodes << endl;
+
+    my_addr = Mesh[nodeindex];
     print_addr(my_addr);
-
 
     addr_len = sizeof(struct sockaddr);
 
@@ -142,7 +145,7 @@ int main(int argc, char *argv[]) //argv is the node index
         }
 
         int req_code = ntohs(head.req_code);
-        int targetnode = findmodulo(md5sum, MESHSIZE); //this is the index of correct node acc to (hash)%(numnodes)
+        int targetnode = findmodulo(md5sum, numnodes); //this is the index of correct node acc to (hash)%(numnodes)
         bool i = (targetnode==nodeindex);
         cout << "checking target node" << targetnode <<endl;
         //decide based on code whether to forward it to correct server or serve it
@@ -151,7 +154,7 @@ int main(int argc, char *argv[]) //argv is the node index
         }
         else{//forward what was received to appropriate node
             cout << "forwarding to correct node" << req_code ;
-            their_addr = CM[targetnode];
+            their_addr = Mesh[targetnode];
             memcpy(sendBuff, &head, sizeof(head));
             n = sendto(my_fd, sendBuff, sizeof(struct udp_header), 0,
                             (struct sockaddr*)&their_addr, addr_len);

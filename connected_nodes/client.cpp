@@ -20,6 +20,7 @@
 #define MYPORT 6000
 
 using namespace std;
+
 void send(int server_fd, char *fpath){
     FILE *rf, *wf;
     char sendBuff[MTU];
@@ -50,6 +51,10 @@ void send(int server_fd, char *fpath){
 int main(int argc, char *argv[]) //argv is the node index
 {
 
+    int numnodes; char folderloc[100];
+    map<int, struct sockaddr_in> Mesh; //Mesh map, just to ease which node to send the request just using node index
+    Mesh = mesh_configure(0, &numnodes, folderloc);
+
     int my_fd, tcp_fd;
     struct sockaddr_in my_addr, their_addr;
     unsigned int addr_len; // NOTE unsigned int
@@ -58,7 +63,8 @@ int main(int argc, char *argv[]) //argv is the node index
 
     //set my_addr
     my_addr.sin_family = AF_INET;
-    my_addr.sin_addr.s_addr = inet_addr(MYADDR);
+    //my_addr.sin_addr.s_addr = inet_addr(MYADDR);
+    my_addr.sin_addr.s_addr = INADDR_ANY;
     my_addr.sin_port = htons(MYPORT+index);
     memset(&(my_addr.sin_zero), '\0', 8); //set rem to nulls
     print_addr(my_addr);
@@ -105,9 +111,7 @@ int main(int argc, char *argv[]) //argv is the node index
         md5sum = md5_hash(fpath);
         cout << "md5 hash is : "<<md5sum<<endl; 
         //sendto()
-        map<int, struct sockaddr_in> CM; //cluster map containing nodeindex->sockaddr_in mapping
-        CM = cluster_setup(); //use only now just to send to servers easily
-        their_addr = CM[nodeid]; //send to server 1
+        their_addr = Mesh[nodeid]; //send to server 1
         cout << "their address " ;
         print_addr(their_addr);
 

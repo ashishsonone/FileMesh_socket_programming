@@ -69,6 +69,19 @@ int main(){
     cout << "hash mod n is : " << mod <<endl;
     cout << "--------END OF checking md5_hash() and findmodulo() functions\n";
 
+    cout << "--------checking mesh_configure function\n";
+    map<int, struct sockaddr_in> Mesh; //cluster map containing nodeindex->sockaddr_in mapping
+    int nodeindex = 2;
+    int numnodes;
+    char folderloc[100];
+    Mesh = mesh_configure(nodeindex, &numnodes, folderloc);
+    cout << "folder loc is " << folderloc << endl;
+    cout << "no of nodes is " << numnodes << endl;
+    struct sockaddr_in my_addr; 
+    my_addr = Mesh[nodeindex];
+    print_addr(my_addr);
+
+    cout << "--------END OF checking mesh_configure function\n";
 
     map<int, struct sockaddr_in> CM;
     CM = cluster_setup();

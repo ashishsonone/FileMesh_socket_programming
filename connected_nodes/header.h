@@ -4,10 +4,12 @@
 #include <arpa/inet.h>
 #include <stdio.h> 
 #include <string.h> //for memset
+#include <fstream> //for ifstream
 #include <math.h>
 
 #define ADDR "127.0.0.1"
 #define PORT 5000
+#define CONFIGFILE "FileMesh.cfg"
 
 using namespace std;
 
@@ -28,6 +30,47 @@ map<int, struct sockaddr_in> cluster_setup(){
         memset(&(my_addr.sin_zero), '\0', 8); //set rem to nulls
         M[i] = my_addr;
     }
+    return M;
+}
+
+/*
+ * Read configure file CONFIGFILE
+ *
+ * returns the map containing mesh info as sockaddr_in
+ * Also takes as argument :
+ *      int nodeindex      (current node's index)
+ *      int* numnodes      (fill it with the no of nodes)
+ *      char *folderloc    (fill it with folder info for given nodeindex where it must be save files)
+ */
+map<int, struct sockaddr_in> mesh_configure(int nodeindex, int *numnodes, char* folderloc){
+    map<int, struct sockaddr_in> M; //this is the map to be returned
+    string line;
+    ifstream infile(CONFIGFILE);
+    int index=0;
+
+    while( std::getline( infile, line ) ){
+        //std::cout<<line<<'\n';
+        char ip[20], folder[100];
+        int lport;
+        unsigned short int port;
+        sscanf(line.c_str(),"%[^:]%*[:]%d%*[ ]%s", ip, &lport, folder); //get ip, port, and folder from the line
+        port = lport; //copy to unsigned short int(which port should be)
+
+        struct sockaddr_in my_addr;
+        my_addr.sin_family = AF_INET;
+        my_addr.sin_addr.s_addr = inet_addr(ip); //the extracted ip string
+        my_addr.sin_port = htons(port); //the extracted port
+        memset(&(my_addr.sin_zero), '\0', 8); //set rem to nulls
+
+        M[index] = my_addr; //Map index -> this sockaddr_in
+
+        //Now check if this index is that of give nodeindex if yes the set folderloc
+        if(index == nodeindex){
+            strcpy(folderloc, folder); //copy , dont just set the pointer as `folder` is local variable
+        }
+        index++;
+    }
+    *numnodes = index; //simply no of lines in the config file
     return M;
 }
 
