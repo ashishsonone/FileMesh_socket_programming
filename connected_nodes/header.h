@@ -20,6 +20,12 @@ struct udp_header{
     char md5sum[32];
 };
 
+//foll is struct used to pass data to thread
+struct thread_data{
+    struct udp_header head; // receive udp request header
+    char md5sum[33]; //md5sum of 33 chars with last char NULL
+};
+
 map<int, struct sockaddr_in> cluster_setup(){
     map<int, struct sockaddr_in> M;
     for(int i=0; i<6; i++){

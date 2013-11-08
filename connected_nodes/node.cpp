@@ -23,8 +23,13 @@ char folderloc[100]; //this is the folder where this node will store files
 int numnodes;
 
 
-void handle_send(udp_header client, char *md5sum){
+void *handle_send(void * args){
+    struct thread_data *tdata = (struct thread_data *)args;
     int temp_fd; //a temporary socket for handling this particular file transfer connection
+
+    udp_header client = tdata->head;
+    char *md5sum = tdata->md5sum;
+    
     
     struct sockaddr_in client_addr;
     client_addr.sin_family = AF_INET;
@@ -35,16 +40,16 @@ void handle_send(udp_header client, char *md5sum){
 
     //socket()
     if((temp_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1){
-      perror("socket");
-      exit(1);
+        perror("socket");
+        pthread_exit(NULL);
     }
 
     printf("\t\ttemporary socket retrieve success\n");
     //connect()
     if(connect(temp_fd, (struct sockaddr *)&client_addr, sizeof(client_addr))<0)
     {
-      printf("\n Error : Connect Failed \n");
-      return ;
+        printf("\n Error : Connect Failed \n");
+        pthread_exit(NULL);
     }
     
     char fpath[100]; //path to file
@@ -75,10 +80,16 @@ void handle_send(udp_header client, char *md5sum){
     }
     close(temp_fd);
     fclose(rf); //close file object (VERY IMP)
+
+    pthread_exit(NULL);
 }
 
-void handle_receive(udp_header client, char *md5sum){
+void *handle_receive(void * args){
+    struct thread_data *tdata = (struct thread_data *)args;
     int temp_fd; //a temporary socket for handling this particular file transfer connection
+
+    udp_header client = tdata->head;
+    char *md5sum = tdata->md5sum;
     
     struct sockaddr_in client_addr;
     client_addr.sin_family = AF_INET;
@@ -89,16 +100,16 @@ void handle_receive(udp_header client, char *md5sum){
 
     //socket()
     if((temp_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1){
-      perror("socket");
-      exit(1);
+        perror("socket");
+        pthread_exit(NULL);
     }
 
     printf("\t\ttemporary socket retrieve success\n");
     //connect()
     if(connect(temp_fd, (struct sockaddr *)&client_addr, sizeof(client_addr))<0)
     {
-      printf("\n Error : Connect Failed \n");
-      return ;
+        printf("\n Error : Connect Failed \n");
+        pthread_exit(NULL);
     }
 
     char recvBuff[MTU];  
@@ -123,7 +134,7 @@ void handle_receive(udp_header client, char *md5sum){
     int n = recv(temp_fd, recvBuff, sizeof(recvBuff)-1, 0);
     if(n<0){
         cout << "error receiving file" << endl;
-        return;
+        pthread_exit(NULL);
     }
     cout << "received bytes" << n <<endl;
     //get file size
@@ -144,6 +155,8 @@ void handle_receive(udp_header client, char *md5sum){
     cout <<"file received ...now closing the socket" <<endl;
     close(temp_fd);
     fclose(wf);  //close file object (VERY IMP)
+
+    pthread_exit(NULL);
 }
 
 int main(int argc, char *argv[]) //argv is the node index
@@ -210,11 +223,21 @@ int main(int argc, char *argv[]) //argv is the node index
 
         // decide based on code whether to forward it to correct server or serve it
         if(i){    // serve the source (whose details in head)
+            thread_data *data = new thread_data;
+            memcpy(&(data->head), &head, sizeof(head));
+            memcpy(data->md5sum, md5sum, sizeof(md5sum));
+
             if(req_code==0){ // client wants to upload a file, so receive and store that file
-                handle_receive(head, md5sum);
+                pthread_t receive_thread;
+                int rc = pthread_create(&receive_thread, NULL, 
+                          handle_receive, (void*)data);
+//handle_receive(head, md5sum);
             }
             else if(req_code==1){ // client wants to download a file, so send that file
-                handle_send(head, md5sum);
+                pthread_t send_thread;
+                int rc = pthread_create(&send_thread, NULL, 
+                          handle_send, (void*)data);
+//                   handle_send(head, md5sum);
             }
         }
         else{//forward what was received to appropriate node

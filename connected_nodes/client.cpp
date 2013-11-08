@@ -16,7 +16,7 @@
 #include "header.h"
 
 #define MTU 1500
-#define MYADDR "127.0.0.1"
+#define MYADDR "10.3.132.142"
 #define MYPORT 6000
 
 using namespace std;
