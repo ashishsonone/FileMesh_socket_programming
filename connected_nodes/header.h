@@ -1,11 +1,17 @@
-#include <map>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+
+#include <unistd.h>
+#include <map>
 #include <stdio.h> 
 #include <string.h> //for memset
 #include <fstream> //for ifstream
 #include <math.h>
+
 
 #define ADDR "127.0.0.1"
 #define PORT 5000
@@ -141,4 +147,28 @@ char* md5_hash(char* fpath){
    
     pclose(in);
     return result;
+}
+
+//get ip address as string given the interface name, eg eth0, eth1
+char * getipaddr(char *interface){ //name of interface
+    int fd;
+    struct ifreq ifr;
+
+    fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    /* set addr family */
+    ifr.ifr_addr.sa_family = AF_INET;
+
+    /* set interface name whose ip needed "eth0" */
+    strncpy(ifr.ifr_name, interface, IFNAMSIZ-1);
+
+    ioctl(fd, SIOCGIFADDR, &ifr); //call the ioctl fn to fill ifr struct
+
+    close(fd);
+    char *ip = new char[20]; char *res;
+
+    res = inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr);
+    strncpy(ip, res, strlen(res));
+    ip[strlen(res)]  = 0; //set the end to NULL char
+    return ip;
 }

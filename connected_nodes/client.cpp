@@ -16,8 +16,6 @@
 #include "header.h"
 
 #define MTU 1500
-#define MYADDR "10.3.132.142"
-#define MYPORT 6000
 
 using namespace std;
 
@@ -89,7 +87,15 @@ void send(int server_fd, char *fpath){
     fclose(rf); //close file object (VERY IMP)
 }
 
-int main(int argc, char *argv[]) //argv is the node index
+/*
+ * takes interface name(e.g eth0, eth1) as argument so that it can get the ip address of host
+ *
+ * follow is a sample command to run at terminal after compiling
+ *
+ * ./client.out eth1       - here interface name will be taken as eth1
+ * ./client.out            - when no interface name given as argument, eth0 is assumed to be default
+ */
+int main(int argc, char *argv[])
 {
 
     map<int, struct sockaddr_in> Mesh; //Mesh map, just to ease which node to send the request just using node index
@@ -98,15 +104,22 @@ int main(int argc, char *argv[]) //argv is the node index
     int my_fd, tcp_fd;
     struct sockaddr_in my_addr, their_addr;
     unsigned int addr_len; // NOTE unsigned int
+    char *myinterface = "eth0"; //interface name e.g eth0 (can be an command line argument)
 
-    unsigned short int index = atoi(argv[1]); //this is the index 
+    if(argc > 1){ //i.e inteface name is give
+        myinterface = argv[1];
+    }
+
+    char *myip = getipaddr(myinterface); //get the ip address using helper funtion defined in header.h
+    cout << "my ip is " << myip <<endl;
 
     //set my_addr
     my_addr.sin_family = AF_INET;
-    //my_addr.sin_addr.s_addr = inet_addr(MYADDR);
-    my_addr.sin_addr.s_addr = INADDR_ANY;
-    my_addr.sin_port = htons(MYPORT+index);
+    my_addr.sin_addr.s_addr = inet_addr(myip);
+    //my_addr.sin_addr.s_addr = INADDR_ANY;
+    my_addr.sin_port = 0; //NOTE imp : if set to 0, on bind() system will automatically chose a random free port
     memset(&(my_addr.sin_zero), '\0', 8); //set rem to nulls
+
     print_addr(my_addr);
 
     addr_len = sizeof(struct sockaddr); //size of sockaddr struct. used in sendto() and recvfrom()
@@ -127,9 +140,6 @@ int main(int argc, char *argv[]) //argv is the node index
     }
     printf("\t\tsockets retrieve success\n");
  
-    ///set SO_REUSEADDR socket option on tcp_fd(so to reuse the port and bind doesnot give error)
-    int optval = 1;
-    setsockopt(tcp_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
     
     //bind() tcpfd to my_addr that will be used to exchange files
     if(bind(tcp_fd, (struct sockaddr*)&my_addr, sizeof(my_addr))<0){
@@ -137,11 +147,10 @@ int main(int argc, char *argv[]) //argv is the node index
         exit(2);
     }
 
-    /*//wait for tcp connection from server and then upload the file
-    if(listen(tcp_fd, 5) == -1){
-        printf("Failed to listen\n");
-        return -1;
-    }*/
+    //**NOTE** use getsockname to get the new addr assigned by system to tcp_fd socket, into my_addr struct
+    getsockname(tcp_fd, (struct sockaddr*)&my_addr, &addr_len);
+    //check the port assigned after bind()
+    print_addr(my_addr);
 
     //while(true){
         unsigned short int code, nodeid;
