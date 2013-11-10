@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
         char *md5sum = new char [50]; //md5sum of file
 
         cout << "Enter first node id(to be contacted first) : "; cin>>nodeid;
-        cout << "Enter option[0 to send, 1 to receive] : "; cin>>code;
+        cout << "Enter option[0 to Store, 1 to Get] : "; cin>>code;
         if(code == 0){
             cout << "Enter file path : "; cin>>fpath;
             md5sum = md5_hash(fpath); //calculate md5sum of given file
