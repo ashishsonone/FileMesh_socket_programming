@@ -19,7 +19,7 @@
 
 using namespace std;
 unsigned short int nodeindex ; //this is the node # (global variable)
-char folderloc[100]; //this is the folder where this node will store files
+char folderloc[500]; //this is the folder where this node will store files
 int numnodes;
 
 
@@ -77,7 +77,9 @@ void *handle_send(void * args){
         fsize -= len;
         fread(sendBuff, 1, len, rf);
         send(temp_fd, sendBuff, len, 0);
+        cout << "sent pkt" << len << "B ... remaining " << fsize << "B To "; print_addr(client_addr); 
     }
+    cout <<"file sent 100% To ";print_addr(client_addr);
     close(temp_fd);
     fclose(rf); //close file object (VERY IMP)
 
@@ -85,12 +87,13 @@ void *handle_send(void * args){
 }
 
 void *handle_receive(void * args){
-    struct thread_data *tdata = (struct thread_data *)args;
-    int temp_fd; //a temporary socket for handling this particular file transfer connection
+    struct thread_data *tdata = (struct thread_data *)args; //get the data passed as `struct thread_dat` from args
+    int temp_fd; //a temporary tcp socket for handling this particular file transfer connection
 
     udp_header client = tdata->head;
     char *md5sum = tdata->md5sum;
     
+    //fill client_add struct
     struct sockaddr_in client_addr;
     client_addr.sin_family = AF_INET;
     client_addr.sin_addr.s_addr = client.src_ip;
@@ -117,16 +120,16 @@ void *handle_receive(void * args){
 
     /* file location info */   
     //first create the save loc folder if not exists
-    char c_cmd[100]; 
+    char c_cmd[500]; 
     sprintf(c_cmd, "mkdir -p %s", folderloc);
     system(c_cmd);
 
-    char c_path[100];
-    sprintf(c_path, "%s/%s", folderloc, md5sum);
+    char c_path[500]; //this holds the complete file path
+    sprintf(c_path, "%s/%s", folderloc, md5sum); //concat folderloc and md5sum to get the file path
     /**********************/
 
     FILE  *wf;
-    wf = fopen(c_path, "wb");
+    wf = fopen(c_path, "wb"); //open file for writing
 
     int filesize, toreceive; //toreceive keeps track of how much else is 
                              //there to receive before connectin can be closed
@@ -148,15 +151,17 @@ void *handle_receive(void * args){
     //get the rest of file
     while(toreceive > 0){
         n = recv(temp_fd, recvBuff, sizeof(recvBuff)-1, 0);
-        cout << "received bytes" << n <<endl;
-        fwrite(recvBuff, 1, n, wf);
+        fwrite(recvBuff, 1, n, wf); //write the received data to file
         toreceive -= n;
+        cout << "recvd pkt " << n << "B ... remaining " <<toreceive << "B from "; print_addr(client_addr);
     }
-    cout <<"file received ...now closing the socket" <<endl;
-    close(temp_fd);
+    cout << "receive operation  .. " << ((float)(filesize -toreceive)*100)/filesize << "% complete from ";print_addr(client_addr);
+    cout <<"file received ... now closing the socket from ";print_addr(client_addr);
+
+    close(temp_fd); //close the tcp socket
     fclose(wf);  //close file object (VERY IMP)
 
-    pthread_exit(NULL);
+    pthread_exit(NULL); //exit the thread
 }
 
 int main(int argc, char *argv[]) //argv is the node index
@@ -205,7 +210,7 @@ int main(int argc, char *argv[]) //argv is the node index
             recvBuff[n] = 0;
             cout << "received bytes : " << n <<endl;
             // memcpy(void *dest, void* src, size_t numbytes);
-            cout << "size of head bytes : " << sizeof(struct udp_header) <<endl;
+            cout << "size of header bytes : " << sizeof(struct udp_header) <<endl;
             memcpy(&head, recvBuff, sizeof(struct udp_header)); //extract udp_header information
             cout << "decoding struct head... port " << ntohs(head.src_port) <<" code "<<ntohs(head.req_code)<<endl;
             memcpy(md5sum, head.md5sum, 32);
@@ -219,10 +224,11 @@ int main(int argc, char *argv[]) //argv is the node index
         int req_code = ntohs(head.req_code);
         int targetnode = findmodulo(md5sum, numnodes); // this is the index of correct node acc to (hash)%(numnodes)
         bool i = (targetnode==nodeindex);
-        cout << "checking target node" << targetnode <<endl;
+        cout << "Checking target node.... " << targetnode <<endl;
 
         // decide based on code whether to forward it to correct server or serve it
         if(i){    // serve the source (whose details in head)
+            cout << "Correct node reached .. now serving \n";
             thread_data *data = new thread_data;
             memcpy(&(data->head), &head, sizeof(head));
             memcpy(data->md5sum, md5sum, sizeof(md5sum));
@@ -241,7 +247,7 @@ int main(int argc, char *argv[]) //argv is the node index
             }
         }
         else{//forward what was received to appropriate node
-            cout << "forwarding to correct node" << req_code ;
+            cout << "Forwarding request to correct node \n";
             their_addr = Mesh[targetnode];
             memcpy(sendBuff, &head, sizeof(head));
             n = sendto(my_fd, sendBuff, sizeof(struct udp_header), 0,

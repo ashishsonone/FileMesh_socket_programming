@@ -25,9 +25,7 @@ void receive(int server_fd, char *fpath){ //fpath is where to save the received 
     memset(recvBuff, '\0', sizeof(recvBuff));
 
     FILE  *wf;
-    cout << "open before\n";
     wf = fopen(fpath, "wb");
-    cout << "open after\n";
 
     int filesize, toreceive; //toreceive keeps track of how much else is 
                              //there to receive before connectin can be closed
@@ -47,13 +45,19 @@ void receive(int server_fd, char *fpath){ //fpath is where to save the received 
     fwrite(recvBuff+4, 1, n-4, wf); //write to file except first 4 bytes
 
     toreceive = filesize + 4 - n; //how much more to receive yet
-    //get the rest of file
+    //Now get the rest of file
+    int printcount = 0; //used to print the status of transfer every 100 receives
     while(toreceive > 0){
         n = recv(server_fd, recvBuff, sizeof(recvBuff)-1, 0);
-        cout << "received bytes" << n <<endl;
         fwrite(recvBuff, 1, n, wf);
         toreceive -= n;
+        if(printcount++ ==100){ //when toreceive count reaches 100 print status, and reset the count
+            printcount = 0;
+            cout << "receive operation  .. " <<((float)(filesize -toreceive)*100)/filesize << "% complete \r";
+            cout.flush();
+        }
     }
+    cout << "receive operation  .. " <<((float)(filesize -toreceive)*100)/filesize << "% complete \n";
     cout <<"file received ...now closing the socket" <<endl;
     close(server_fd);
     fclose(wf);  //close file object (VERY IMP)
@@ -62,26 +66,35 @@ void receive(int server_fd, char *fpath){ //fpath is where to save the received 
 void send(int server_fd, char *fpath){
     FILE *rf;
     char sendBuff[MTU];
-    int fsize;
+    int fsize, FileSize; //fsize will hold #bytes yet to be sent, FileSize will always hold size of file
 
     rf = fopen(fpath, "rb");
     fseek(rf, 0, SEEK_END); //fseek(fp, offset, origin) -- go to that pos
     fsize = ftell(rf); //ftell(fp) -- tell the current pos
+    FileSize = fsize;
+    cout << "FileSize is  " << fsize <<endl;
     fseek(rf, 0 , SEEK_SET);//go to begining of file
     int fsizenet = htonl(fsize);//fsize in network byte order
     memcpy(sendBuff, &fsizenet, sizeof(int));
     int n =send(server_fd, sendBuff, sizeof(int), 0);
     if(n<0) cout<<"Send error file";
 
+    int printcount = 0; //used to print the status of transfer every 100 receives
     while(fsize > 0){
         int len = 1490;
-        if(fsize<1490){
-            len = fsize;
+        if(fsize<1490){ //this takes care of the last chunk which can be less than say 1490 and must be careful while reading from FILE and sending it
+            len = fsize; //set len to remaining file length
+        }
+        if(printcount++ ==100){ //when toreceive count reaches 100 print status, and reset the count
+            printcount = 0;
+            cout << "trasfer operation  .. " <<((float)(FileSize -fsize)*100)/FileSize << "% complete \r";
+            cout.flush();
         }
         fsize -= len;
         fread(sendBuff, 1, len, rf);
         send(server_fd, sendBuff, len, 0);
     }
+        cout << "trasfer operation  .. " <<((float)(FileSize -fsize)*100)/FileSize << "% complete \n";
     cout <<"file sent ...now closing the socket" <<endl;
     close(server_fd);
     fclose(rf); //close file object (VERY IMP)
@@ -154,8 +167,8 @@ int main(int argc, char *argv[])
 
     //while(true){
         unsigned short int code, nodeid;
-        char fpath[50]; //path of file to be sent or received
-        char folderloc[50];//folder where file received must be saved
+        char fpath[500]; //path of file to be sent or received
+        char folderloc[500];//folder where file received must be saved
         char *md5sum = new char [50]; //md5sum of file
 
         cout << "Enter first node id(to be contacted first) : "; cin>>nodeid;

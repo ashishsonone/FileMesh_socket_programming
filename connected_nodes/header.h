@@ -62,7 +62,7 @@ map<int, struct sockaddr_in> mesh_configure(int nodeindex, int *numnodes, char* 
 
     while( std::getline( infile, line ) ){
         //std::cout<<line<<'\n';
-        char ip[20], folder[100];
+        char ip[20], folder[500];
         int lport;
         unsigned short int port;
         sscanf(line.c_str(),"%[^:]%*[:]%d%*[ ]%s", ip, &lport, folder); //get ip, port, and folder from the line
@@ -129,8 +129,7 @@ char* md5_hash(char* fpath){
 
     //command to be executed formed below : md5sum filepath | awk '{print $1}'
     //gives md5sum as 32 char string
-    string cmd = "md5sum ";
-    char c_cmd[100];
+    char c_cmd[600];
     sprintf(c_cmd, "md5sum %s |awk '{print $1}'", fpath);
 
     if(!(in = popen(c_cmd, "r"))){ //execute the system command and get the output in FILE *in
