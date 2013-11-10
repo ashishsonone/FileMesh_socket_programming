@@ -1,3 +1,17 @@
+/*
+ * This is the client program. Used to send and receive files.
+ *
+ *
+ * takes interface name(e.g eth0, eth1) as argument so that it can get the ip address of host
+ * (DEFAULT eth0)
+ *
+ * Compilation: (Requires  header.h  and FileMesh.cfg)
+ *      g++ client.cpp -o client.out 
+ *
+ * How to Run:
+ *      ./client.out eth1       - here interface name will be taken as eth1
+ *      ./client.out            - when no interface name given as argument, eth0 is assumed to be default
+ */
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -12,10 +26,11 @@
 #include <map>
 
 #include <pthread.h> //thread to simultaneous read write
-//any extra header files
+
+//any extra header files included below
 #include "header.h"
 
-#define MTU 1500
+#define MTU 1500 //used as send/receive buffer size
 
 using namespace std;
 
@@ -94,20 +109,13 @@ void send(int server_fd, char *fpath){
         fread(sendBuff, 1, len, rf);
         send(server_fd, sendBuff, len, 0);
     }
-        cout << "trasfer operation  .. " <<((float)(FileSize -fsize)*100)/FileSize << "% complete \n";
+    cout << "trasfer operation  .. " <<((float)(FileSize -fsize)*100)/FileSize << "% complete \n";
     cout <<"file sent ...now closing the socket" <<endl;
     close(server_fd);
     fclose(rf); //close file object (VERY IMP)
 }
 
-/*
- * takes interface name(e.g eth0, eth1) as argument so that it can get the ip address of host
- *
- * follow is a sample command to run at terminal after compiling
- *
- * ./client.out eth1       - here interface name will be taken as eth1
- * ./client.out            - when no interface name given as argument, eth0 is assumed to be default
- */
+
 int main(int argc, char *argv[])
 {
 
@@ -206,7 +214,8 @@ int main(int argc, char *argv[])
             printf("\t\ttransmitted to %s\n", inet_ntoa(their_addr.sin_addr));
         }
         else{
-            cout << "\t\ttransmit error\n";
+            cout << "\t\t udp transmit error\n";
+            return 0;
         }
         
         //listen() : now listen to tcp socket and wait for the right node to contact you
@@ -215,10 +224,10 @@ int main(int argc, char *argv[])
             return -1;
         }
 
-        cout <<"waiting for connection" <<endl;
+        cout <<"waiting for connection .... " <<endl;
         //accept() : wait for reply from correct node and accept the connection
         int temp_fd = accept(tcp_fd, (struct sockaddr*)NULL ,NULL); // accept awaiting request
-        cout << "temp fd : " << temp_fd <<endl;
+        cout << "temporary tcp socket fd : " << temp_fd <<endl;
 
         //call appropriate function send/receive
         if(code==0) send(temp_fd, fpath);

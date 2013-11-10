@@ -1,3 +1,17 @@
+/*
+ * This is the Node program. Used to serve client request for upload/download
+ * Requires  header.h  and FileMesh.cfg.
+ *
+ * Takes Nodeid (0 to n-1)  as command-line argument where n is #nodes in Mesh
+ *
+ * Compilation: (Requires  header.h  and FileMesh.cfg)
+ *      g++ client.cpp -o client.out 
+ *
+ * How to Run:
+ *      ./node.out 3
+ *
+ */
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -12,10 +26,11 @@
 #include <map>
 
 #include <pthread.h> //thread to simultaneous read write
-//any extra header files
+
+//any extra header files included below
 #include "header.h"
 
-#define MTU 1500
+#define MTU 1500 //used as send/receive buffer size
 
 using namespace std;
 unsigned short int nodeindex ; //this is the node # (global variable)
@@ -52,14 +67,14 @@ void *handle_send(void * args){
         pthread_exit(NULL);
     }
     
-    char fpath[100]; //path to file
-    sprintf(fpath, "%s/%s", folderloc, md5sum);
+    char fpath[500]; //path to file
+    sprintf(fpath, "%s/%s", folderloc, md5sum); //concat folderlocation and md5sum to get full file path
 
     FILE *rf;
     char sendBuff[MTU];
     int fsize;
 
-    rf = fopen(fpath, "rb");
+    rf = fopen(fpath, "rb"); //open the file in read-binary mode
     fseek(rf, 0, SEEK_END); //fseek(fp, offset, origin) -- go to that pos
     fsize = ftell(rf); //ftell(fp) -- tell the current pos
     fseek(rf, 0 , SEEK_SET);//go to begining of file
@@ -67,7 +82,11 @@ void *handle_send(void * args){
     int fsizenet = htonl(fsize);//fsize in network byte order
     memcpy(sendBuff, &fsizenet, sizeof(int));
     int n =send(temp_fd, sendBuff, sizeof(int), 0);
-    if(n<0) cout<<"Send error file";
+
+    if(n<0) {
+        cout<<"Send error file size\n";
+        pthread_exit(NULL);
+    }
 
     while(fsize > 0){
         int len = 1490;
@@ -75,12 +94,12 @@ void *handle_send(void * args){
             len = fsize;
         }
         fsize -= len;
-        fread(sendBuff, 1, len, rf);
-        send(temp_fd, sendBuff, len, 0);
+        fread(sendBuff, 1, len, rf); //read len bytes from file
+        send(temp_fd, sendBuff, len, 0); //send the read bytes
         cout << "sent pkt" << len << "B ... remaining " << fsize << "B To "; print_addr(client_addr); 
     }
     cout <<"file sent 100% To ";print_addr(client_addr);
-    close(temp_fd);
+    close(temp_fd); //close the tcp socket
     fclose(rf); //close file object (VERY IMP)
 
     pthread_exit(NULL);
@@ -164,7 +183,7 @@ void *handle_receive(void * args){
     pthread_exit(NULL); //exit the thread
 }
 
-int main(int argc, char *argv[]) //argv is the node index
+int main(int argc, char *argv[]) //argv[1] is the node index
 {
 
     int my_fd;
@@ -174,7 +193,7 @@ int main(int argc, char *argv[]) //argv is the node index
     nodeindex = atoi(argv[1]); //this is the index which identifies this node
 
     map<int, struct sockaddr_in> Mesh; //cluster map containing nodeindex->sockaddr_in mapping
-    Mesh = mesh_configure(nodeindex, &numnodes, folderloc);
+    Mesh = mesh_configure(nodeindex, &numnodes, folderloc); //call mesh_configure to fill Mesh
     cout << "folder loc is " << folderloc << endl;
     cout << "no of nodes is " << numnodes << endl;
 
@@ -237,13 +256,11 @@ int main(int argc, char *argv[]) //argv is the node index
                 pthread_t receive_thread;
                 int rc = pthread_create(&receive_thread, NULL, 
                           handle_receive, (void*)data);
-//handle_receive(head, md5sum);
             }
             else if(req_code==1){ // client wants to download a file, so send that file
                 pthread_t send_thread;
                 int rc = pthread_create(&send_thread, NULL, 
                           handle_send, (void*)data);
-//                   handle_send(head, md5sum);
             }
         }
         else{//forward what was received to appropriate node
@@ -254,6 +271,6 @@ int main(int argc, char *argv[]) //argv is the node index
                             (struct sockaddr*)&their_addr, addr_len);
         }
     }
-    close(my_fd);
+    close(my_fd); //close udp socket
     return 0;
 }
