@@ -13,6 +13,17 @@
 #include <fstream> //for ifstream
 using namespace std;
 
+/*
+
+char str[] = "query=testword&diskimg=simple.img";
+
+sscanf(str, "%*[^=]%*c%[^&]%*[^=]%*c%s", buf1, buf2);
+It's pretty cryptic, so here's the summary: each % designates the start of a chunk of text. 
+If there's a * following the %, that means that we ignore that chunk and don't store it in one 
+of our buffers. The ^ within the brackets means that this chunk contains any number of characters 
+that are not the characters within the brackets (excepting ^ itself). %s reads a string of arbitrary
+length, and %c reads a single character.
+*/
 int main(){
     string line;
     ifstream infile("test.txt");
